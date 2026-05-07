@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Security PNRE — Dashboard</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --sidebar-w:185px;
+  --blue:#2563eb;--blue-light:#eff6ff;--blue-mid:#bfdbfe;
+  --red:#ef4444;--amber:#f59e0b;--green:#10b981;
+  --gray:#6b7280;--gray-light:#f3f4f6;--gray-border:#e5e7eb;
+  --text:#111827;--text2:#6b7280;--text3:#9ca3af;
+  --white:#fff;
+  --shadow:0 1px 3px rgba(0,0,0,.08);
+  --radius:10px;--radius-sm:6px;
+  --sans:'Inter',sans-serif;
+}
+body{font-family:var(--sans);background:#f0f4f8;color:var(--text);display:flex;height:100vh;overflow:hidden;font-size:13px}
+
+/* SIDEBAR */
+.sidebar{width:var(--sidebar-w);background:var(--white);border-right:1px solid var(--gray-border);display:flex;flex-direction:column;flex-shrink:0;z-index:10}
+.sidebar-brand{padding:16px 14px 12px;border-bottom:1px solid var(--gray-border)}
+.sidebar-logo{display:flex;align-items:center;gap:8px}
+.sidebar-logo-icon{width:28px;height:28px;background:linear-gradient(135deg,#1d4ed8,#3b82f6);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+.sidebar-brand-name{font-size:13px;font-weight:700;color:var(--text)}
+.sidebar-brand-sub{font-size:9px;color:var(--text3);margin-top:1px}
+.sidebar-nav{padding:10px 8px;flex:1;overflow-y:auto}
+.nav-section{font-size:9px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);padding:0 8px;margin-bottom:4px;margin-top:12px}
+.nav-section:first-child{margin-top:0}
+.nav-item{display:flex;align-items:center;gap:7px;padding:7px 8px;border-radius:var(--radius-sm);cursor:pointer;color:var(--text2);font-size:12px;font-weight:500;transition:all .15s;user-select:none}
+.nav-item:hover{background:var(--gray-light);color:var(--text)}
+.nav-item.active{background:var(--blue-light);color:var(--blue)}
+.nav-item-icon{font-size:13px;width:18px;text-align:center;flex-shrink:0}
+.nav-badge{margin-left:auto;background:var(--red);color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:8px}
+.nav-badge-a{background:var(--amber);color:#000}
+.sidebar-footer{padding:10px 14px;border-top:1px solid var(--gray-border)}
+.user-row{display:flex;align-items:center;gap:7px}
+.user-avatar{width:26px;height:26px;border-radius:50%;background:var(--blue-light);border:1px solid var(--blue-mid);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:var(--blue);flex-shrink:0}
+
+/* MAIN */
+.main-area{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+
+/* TOPBAR */
+.topbar{background:var(--white);border-bottom:1px solid var(--gray-border);padding:0 18px;height:50px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;gap:10px}
+.topbar-left{display:flex;align-items:center;gap:10px;min-width:0}
+.page-title{font-size:15px;font-weight:700;color:var(--text);letter-spacing:-.02em;white-space:nowrap}
+
+/* DATE RANGE PICKER */
+.date-range-wrap{position:relative;display:flex;align-items:center}
+.date-range-btn{display:flex;align-items:center;gap:5px;background:var(--gray-light);border:1px solid var(--gray-border);border-radius:6px;padding:4px 10px;font-size:11px;color:var(--text2);cursor:pointer;white-space:nowrap;transition:border-color .15s;user-select:none}
+.date-range-btn:hover{border-color:var(--blue);color:var(--text)}
+.date-picker-popup{position:absolute;top:calc(100% + 6px);left:0;background:var(--white);border:1px solid var(--gray-border);border-radius:10px;padding:14px;box-shadow:0 8px 30px rgba(0,0,0,.12);z-index:200;width:280px;display:none}
+.date-picker-popup.open{display:block}
+.dp-title{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px}
+.dp-row{display:flex;gap:8px;margin-bottom:8px}
+.dp-field{flex:1}
+.dp-lbl{font-size:10px;color:var(--text3);margin-bottom:3px}
+.dp-input{width:100%;background:var(--gray-light);border:1px solid var(--gray-border);border-radius:5px;padding:5px 8px;font-size:11px;color:var(--text);font-family:var(--sans);outline:none}
+.dp-input:focus{border-color:var(--blue)}
+.dp-presets{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px}
+.dp-preset{background:var(--gray-light);border:1px solid var(--gray-border);border-radius:4px;padding:3px 8px;font-size:10px;color:var(--text2);cursor:pointer;transition:all .15s}
+.dp-preset:hover,.dp-preset.active{background:var(--blue-light);border-color:var(--blue-mid);color:var(--blue)}
+.dp-apply{width:100%;background:var(--blue);color:#fff;border:none;border-radius:5px;padding:7px;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--sans)}
+.dp-apply:hover{background:#1d4ed8}
+
+.topbar-right{display:flex;align-items:center;gap:7px;flex-shrink:0}
+.status-pill{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text2);padding:3px 8px;background:var(--gray-light);border-radius:4px;white-space:nowrap}
+.dot{width:5px;height:5px;border-radius:50%}
+.dot-g{background:var(--green);animation:pulse 2s infinite}
+.dot-r{background:var(--red);animation:pulse 1s infinite}
+.dot-a{background:var(--amber);animation:pulse 1.5s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.clock-display{font-size:11px;font-weight:600;color:var(--blue);font-family:monospace}
+
+/* TICKER */
+.ticker{background:#fef2f2;border-bottom:1px solid #fecaca;padding:5px 18px;display:flex;align-items:center;gap:8px;overflow:hidden;flex-shrink:0}
+.ticker-tag{background:var(--red);color:#fff;font-size:9px;font-weight:700;letter-spacing:.08em;padding:2px 6px;border-radius:2px;flex-shrink:0}
+.ticker-inner{white-space:nowrap;font-size:10px;color:#dc2626;animation:tick 32s linear infinite}
+@keyframes tick{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+
+/* CONTENT */
+.content{flex:1;overflow-y:auto;padding:14px 18px;display:flex;flex-direction:column;gap:12px}
+.page{display:none}.page.active{display:flex;flex-direction:column;gap:12px}
+
+/* ASSET BAR */
+.asset-bar{background:var(--white);border:1px solid var(--gray-border);border-radius:var(--radius);padding:9px 13px;display:flex;align-items:center;gap:9px;box-shadow:var(--shadow)}
+.asel-lbl{font-size:10px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;white-space:nowrap}
+.asel-select{flex:1;max-width:340px;background:var(--gray-light);border:1px solid var(--gray-border);border-radius:6px;padding:5px 9px;color:var(--text);font-size:11px;font-family:var(--sans);outline:none}
+.asel-select:focus{border-color:var(--blue)}
+.asel-tag{display:inline-flex;align-items:center;font-size:10px;padding:2px 8px;border-radius:10px;font-weight:600;white-space:nowrap}
+.tag-pge{background:#fef2f2;color:#dc2626;border:1px solid #fecaca}
+.tag-ppi{background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe}
+.tag-pag{background:#f5f3ff;color:#7c3aed;border:1px solid #ddd6fe}
+.tag-rc{background:#fef2f2;color:#dc2626}.tag-rh{background:#fffbeb;color:#b45309}.tag-rm{background:#eff6ff;color:#1d4ed8}.tag-rl{background:#ecfdf5;color:#059669}
+
+/* STATS */
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.stat-card{background:var(--white);border:1px solid var(--gray-border);border-radius:var(--radius);padding:11px 13px;box-shadow:var(--shadow)}
+.stat-lbl{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);margin-bottom:4px}
+.stat-val{font-size:21px;font-weight:700;line-height:1;letter-spacing:-.02em}
+.stat-sub{font-size:10px;color:var(--text3);margin-top:3px}
+
+/* LAYOUT */
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+
+/* CARD */
+.card{background:var(--white);border:1px solid var(--gray-border);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+.card-hdr{padding:11px 13px;border-bottom:1px solid var(--gray-border);display:flex;align-items:center;justify-content:space-between}
+.card-title{font-size:12px;font-weight:600;color:var(--text)}
+.card-act{font-size:11px;color:var(--blue);cursor:pointer}
+.card-body{padding:12px 13px}
+
+/* MAP */
+#map{height:310px;width:100%}
+.map-legend{padding:7px 13px;border-top:1px solid var(--gray-border);display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.leg-item{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--text2)}
+.leg-dot{width:9px;height:9px;border-radius:50%}
+
+/* RISK MARKER BLINK */
+@keyframes risk-blink{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.3)}}
+.risk-marker-blink{animation:risk-blink 1.2s ease-in-out infinite}
+
+/* OSINT PANEL */
+.osint-type-tabs{display:flex;border-bottom:1px solid var(--gray-border)}
+.ott{padding:7px 13px;font-size:11px;font-weight:500;cursor:pointer;color:var(--text2);border-bottom:2px solid transparent;transition:color .15s;display:flex;align-items:center;gap:5px;white-space:nowrap;user-select:none}
+.ott:hover{color:var(--text)}
+.ott.active{color:var(--blue);border-bottom-color:var(--blue)}
+.ott-badge{font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px}
+.ottb-area{background:#fffbeb;color:#b45309}
+.ottb-direct{background:#fef2f2;color:#dc2626}
+.search-row{padding:8px 12px;border-bottom:1px solid var(--gray-border);display:flex;gap:6px}
+.search-input{flex:1;background:var(--gray-light);border:1px solid var(--gray-border);border-radius:6px;padding:6px 10px;color:var(--text);font-size:11px;font-family:var(--sans);outline:none}
+.search-input:focus{border-color:var(--blue);background:var(--white)}
+.btn-search{background:var(--blue);color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--sans);display:flex;align-items:center;gap:4px;white-space:nowrap}
+.btn-search:hover{background:#1d4ed8}
+.btn-search:disabled{opacity:.5;cursor:not-allowed}
+.sugg-row{padding:6px 12px;border-bottom:1px solid var(--gray-border);display:flex;flex-wrap:wrap;gap:5px;align-items:center}
+.sug-lbl{font-size:10px;color:var(--text3)}
+.sug-btn{background:#f0f9ff;border:1px solid #bae6fd;color:#0369a1;font-size:10px;padding:2px 7px;border-radius:10px;cursor:pointer;font-family:var(--sans)}
+.sug-btn:hover{background:#e0f2fe}
+.osint-body{padding:10px 12px;overflow-y:auto;min-height:160px;max-height:300px}
+.thinking{display:flex;align-items:center;gap:7px;padding:16px 0;color:var(--text2);font-size:11px}
+.think-dots span{display:inline-block;animation:think .9s ease-in-out infinite}
+.think-dots span:nth-child(2){animation-delay:.15s}
+.think-dots span:nth-child(3){animation-delay:.3s}
+@keyframes think{0%,80%,100%{opacity:.2}40%{opacity:1}}
+.empty-osint{text-align:center;padding:24px 0;color:var(--text3);font-size:11px;line-height:1.8}
+.ov-box{background:#f0f9ff;border:1px solid #bae6fd;border-left:3px solid;border-radius:6px;padding:9px 11px;margin-bottom:9px}
+.ov-risk-lbl{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px}
+.ov-text{font-size:11px;color:var(--text);line-height:1.5}
+.ov-rec{font-size:10px;color:#0891b2;margin-top:5px;padding-top:5px;border-top:1px solid #bae6fd}
+.osint-ev{border-left:3px solid;background:#fafafa;border:1px solid var(--gray-border);border-left-width:3px;border-radius:0 6px 6px 0;padding:8px 10px;margin-bottom:7px}
+.osint-ev:last-child{margin-bottom:0}
+.oe-c{border-left-color:#ef4444}.oe-h{border-left-color:#f59e0b}.oe-m{border-left-color:#3b82f6}.oe-l{border-left-color:#10b981}
+.oe-r1{display:flex;align-items:flex-start;justify-content:space-between;gap:7px;margin-bottom:3px}
+.oe-title{font-size:11px;font-weight:500;color:var(--text);flex:1;line-height:1.4}
+.oe-r2{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.oe-loc{font-size:10px;color:var(--text2)}
+.oe-src{font-size:9px;background:#f5f3ff;color:#7c3aed;border:1px solid #ddd6fe;padding:1px 5px;border-radius:3px}
+.oe-time{font-size:10px;color:var(--text3)}
+.oe-sum{font-size:11px;color:var(--text2);line-height:1.5;margin-top:5px;padding-top:5px;border-top:1px solid var(--gray-border)}
+.nb{display:inline-flex;font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;flex-shrink:0;white-space:nowrap}
+.nb-c{background:#fef2f2;color:#dc2626;border:1px solid #fecaca}
+.nb-h{background:#fffbeb;color:#b45309;border:1px solid #fde68a}
+.nb-m{background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe}
+.nb-l{background:#ecfdf5;color:#059669;border:1px solid #a7f3d0}
+
+/* NEWS LIST */
+.news-list{display:flex;flex-direction:column;gap:0;max-height:320px;overflow-y:auto}
+.news-item{padding:9px 12px;border-bottom:1px solid var(--gray-border);cursor:pointer;transition:background .1s}
+.news-item:last-child{border-bottom:none}
+.news-item:hover{background:var(--gray-light)}
+.ni-hdr{display:flex;align-items:flex-start;justify-content:space-between;gap:7px;margin-bottom:3px}
+.ni-title{font-size:11px;font-weight:500;color:var(--text);flex:1;line-height:1.4}
+.ni-meta{display:flex;align-items:center;gap:7px;font-size:10px;color:var(--text3);flex-wrap:wrap}
+.ni-src{font-size:9px;background:#f5f3ff;color:#7c3aed;border:1px solid #ddd6fe;padding:1px 5px;border-radius:3px}
+
+/* CHART */
+.chart-wrap{padding:11px;position:relative}
+.chart-wrap canvas{max-height:160px}
+
+/* FORMS */
+.form-row{margin-bottom:9px}
+.form-lbl{font-size:10px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px}
+.finput,.fselect,.ftextarea{width:100%;background:var(--gray-light);border:1px solid var(--gray-border);border-radius:6px;padding:6px 9px;color:var(--text);font-size:11px;font-family:var(--sans);outline:none;transition:border-color .15s}
+.finput:focus,.fselect:focus,.ftextarea:focus{border-color:var(--blue);background:var(--white)}
+.fselect option{background:var(--white)}
+.ftextarea{resize:vertical;min-height:60px}
+.btn{border-radius:6px;padding:7px 13px;font-size:11px;font-weight:500;cursor:pointer;border:none;font-family:var(--sans);transition:all .15s}
+.btn-primary{background:var(--blue);color:#fff}.btn-primary:hover{background:#1d4ed8}
+.btn-secondary{background:var(--gray-light);color:var(--text2);border:1px solid var(--gray-border)}
+.divider{height:1px;background:var(--gray-border);margin:10px 0}
+
+/* CCTV */
+.cctv-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+.cctv-feed{background:#050810;border-radius:6px;border:1px solid var(--gray-border);aspect-ratio:16/10;position:relative;overflow:hidden;cursor:pointer}
+.cctv-feed.offline{background:#111;border-color:#fecaca}
+.cctv-feed.alert-feed{border-color:#fca5a5;border-width:2px}
+.scanline{position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.1) 2px,rgba(0,0,0,.1) 4px);pointer-events:none;z-index:2}
+.cctv-ts{position:absolute;top:5px;left:7px;font-family:monospace;font-size:8px;color:rgba(255,255,255,.4);z-index:3}
+.cctv-rec{position:absolute;top:5px;right:7px;display:flex;align-items:center;gap:3px;font-family:monospace;font-size:8px;color:#ef4444;z-index:3}
+.cctv-lbl{position:absolute;bottom:5px;left:7px;font-family:monospace;font-size:8px;color:rgba(255,255,255,.55);z-index:3}
+.offline-overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;z-index:3}
+.offline-text{font-family:monospace;font-size:9px;color:#ef4444;letter-spacing:.1em;animation:blink 1s step-end infinite}
+@keyframes blink{50%{opacity:0}}
+
+/* PERSONNEL */
+.prow{display:flex;align-items:center;padding:7px 0;border-bottom:1px solid var(--gray-border);gap:8px}
+.prow:last-child{border-bottom:none}
+.pavatar{width:26px;height:26px;border-radius:50%;background:var(--blue-light);border:1px solid var(--blue-mid);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:var(--blue);flex-shrink:0}
+.pname{font-size:11px;font-weight:500;flex:1}
+.prole{font-size:10px;color:var(--text2)}
+
+/* FACILITIES */
+.fac-item{display:flex;align-items:center;gap:9px;padding:7px 0;border-bottom:1px solid var(--gray-border)}
+.fac-item:last-child{border-bottom:none}
+.fac-icon{width:30px;height:30px;background:var(--gray-light);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+.fac-info{flex:1}
+.fac-name{font-size:11px;font-weight:500}
+.fac-detail{font-size:10px;color:var(--text2);margin-top:1px}
+.cond-bar{width:100%;height:3px;background:var(--gray-border);border-radius:2px;overflow:hidden;margin-top:4px}
+.cond-fill{height:100%;border-radius:2px}
+.fac-count{font-size:15px;font-weight:700;text-align:right}
+.fac-note{font-size:9px;text-align:right;margin-top:1px}
+
+/* PATROL */
+.patrol-item{display:flex;align-items:center;gap:9px;padding:6px 0;border-bottom:1px solid var(--gray-border)}
+.patrol-item:last-child{border-bottom:none}
+.patrol-time{font-size:10px;color:var(--text3);width:46px;flex-shrink:0;font-family:monospace}
+.patrol-name{font-size:11px;flex:1}
+
+/* POPUP */
+.popup{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;align-items:center;justify-content:center;z-index:1000}
+.popup.show{display:flex}
+.popup-card{background:var(--white);border-radius:12px;padding:18px;width:315px;max-width:94vw;box-shadow:0 20px 60px rgba(0,0,0,.18)}
+.popup-hdr{display:flex;align-items:flex-start;gap:9px;margin-bottom:11px}
+.popup-icon{width:34px;height:34px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.popup-body{background:var(--gray-light);border-radius:6px;padding:9px;margin-bottom:11px;font-size:11px;color:var(--text2);line-height:1.6}
+.popup-actions{display:flex;gap:7px}
+.popup-actions .btn{flex:1;padding:7px}
+
+::-webkit-scrollbar{width:3px;height:3px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--gray-border);border-radius:2px}
+</style>
+</head>
+<body>
+
+<!-- POPUPS -->
+<div class="popup" id="popMotion">
+  <div class="popup-card">
+    <div class="popup-hdr">
+      <div class="popup-icon" style="background:#fef2f2">⚠️</div>
+      <div><div style="font-size:13px;font-weight:700">Anomali Pergerakan</div><div style="font-size:11px;color:var(--text2)">CAM-04 · Gudang Material</div></div>
+    </div>
+    <div class="popup-body"><strong style="color:var(--red)">TANPA COVERALL / APD</strong> — Individu di zona terbatas tanpa alat pelindung. Pola tidak sesuai rutinitas.<br><br><span style="font-size:10px;color:var(--text3)">Confidence: 87% · Zone: Restricted · Duration: 0:48</span></div>
+    <div class="popup-actions"><button class="btn btn-primary" onclick="closePopup('popMotion')">Tinjau Footage</button><button class="btn btn-secondary" onclick="closePopup('popMotion')">Dismiss</button></div>
+  </div>
+</div>
+<div class="popup" id="popOffline">
+  <div class="popup-card">
+    <div class="popup-hdr">
+      <div class="popup-icon" style="background:#fffbeb">📡</div>
+      <div><div style="font-size:13px;font-weight:700">Kamera Offline</div><div style="font-size:11px;color:var(--text2)">CAM-07 · Pintu Utara · Sejak 13:55</div></div>
+    </div>
+    <div class="popup-body"><strong style="color:var(--amber)">CAM-07</strong> tidak mengirim sinyal selama <strong>28 menit</strong>.<br><br><span style="font-size:10px;color:var(--text3)">Last signal: 13:55:22 · IP: 192.168.1.107 · Ping: timeout</span></div>
+    <div class="popup-actions"><button class="btn" style="flex:1;padding:7px;background:var(--amber);color:#fff;border-radius:6px;cursor:pointer" onclick="closePopup('popOffline')">Dispatch Teknisi</button><button class="btn btn-secondary" onclick="closePopup('popOffline')">Acknowledge</button></div>
+  </div>
+</div>
+
+<!-- SIDEBAR -->
+<div class="sidebar">
+  <div class="sidebar-brand">
+    <div class="sidebar-logo">
+      <div class="sidebar-logo-icon">⚡</div>
+      <div><div class="sidebar-brand-name">Security PNRE</div><div class="sidebar-brand-sub">PGE · PPI</div></div>
+    </div>
+  </div>
+  <div class="sidebar-nav">
+    <div class="nav-section">Operasional</div>
+    <div class="nav-item active" onclick="switchPage('forecast',this)"><span class="nav-item-icon">⚡</span>Security Forecast<span class="nav-badge" id="navBadgeForecast">5</span></div>
+    <div class="nav-item" onclick="switchPage('cctv',this)"><span class="nav-item-icon">📹</span>CCTV Monitoring<span class="nav-badge nav-badge-a">1</span></div>
+    <div class="nav-item" onclick="switchPage('personnel',this)"><span class="nav-item-icon">👥</span>Logbook / Personel</div>
+    <div class="nav-item" onclick="switchPage('facilities',this)"><span class="nav-item-icon">🔧</span>Sarana & Prasarana</div>
+    <div class="nav-section">Lainnya</div>
+    <div class="nav-item"><span class="nav-item-icon">📋</span>Audit SMP</div>
+    <div class="nav-item"><span class="nav-item-icon">📊</span>SRA</div>
+    <div class="nav-item"><span class="nav-item-icon">📁</span>STK</div>
+  </div>
+  <div class="sidebar-footer">
+    <div class="user-row">
+      <div class="user-avatar">SO</div>
+      <div><div style="font-size:11px;font-weight:500">Security Ops</div><div style="font-size:10px;color:var(--text3)" id="clockSmall">--:-- WIB</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main-area">
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="page-title" id="pageTitle">Security Forecast Dashboard</div>
+      <!-- DATE RANGE PICKER -->
+      <div class="date-range-wrap" id="dateRangeWrap">
+        <div class="date-range-btn" onclick="toggleDatePicker()">
+          📅 <span id="dateRangeLabel">01/05/2026 – 07/05/2026</span> ▾
+        </div>
+        <div class="date-picker-popup" id="datePickerPopup">
+          <div class="dp-title">Pilih Rentang Waktu</div>
+          <div class="dp-presets">
+            <div class="dp-preset active" onclick="setPreset(1,'Hari Ini',this)">Hari Ini</div>
+            <div class="dp-preset" onclick="setPreset(7,'7 Hari',this)">7 Hari</div>
+            <div class="dp-preset" onclick="setPreset(30,'30 Hari',this)">30 Hari</div>
+            <div class="dp-preset" onclick="setPreset(90,'3 Bulan',this)">3 Bulan</div>
+          </div>
+          <div class="dp-row">
+            <div class="dp-field"><div class="dp-lbl">Dari</div><input type="date" class="dp-input" id="dpFrom" value="2026-05-01"/></div>
+            <div class="dp-field"><div class="dp-lbl">Sampai</div><input type="date" class="dp-input" id="dpTo" value="2026-05-07"/></div>
+          </div>
+          <button class="dp-apply" onclick="applyDateRange()">Terapkan</button>
+        </div>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <div class="status-pill"><div class="dot dot-g"></div>Sistem Aktif</div>
+      <div class="status-pill" style="cursor:pointer;color:var(--red)" onclick="document.getElementById('popMotion').classList.add('show')"><div class="dot dot-r"></div>1 Alert</div>
+      <div class="status-pill" style="cursor:pointer;color:var(--amber)" onclick="document.getElementById('popOffline').classList.add('show')"><div class="dot dot-a"></div>1 Offline</div>
+      <div class="clock-display" id="clock">--:--:--</div>
+    </div>
+  </div>
+
+  <!-- TICKER -->
+  <div class="ticker">
+    <div class="ticker-tag">LIVE INTEL</div>
+    <div class="ticker-inner">🔴 Demo warga di sekitar PGE Lahendong · Tomohon, Sulawesi Utara &nbsp;&nbsp;&nbsp; 🟡 Kendaraan tak dikenal perimeter PGE Kamojang sejak 11.00 WIB &nbsp;&nbsp;&nbsp; 🟡 Pencurian kabel kawasan industri Dumai · Potensi ancaman PLTS Dumai &nbsp;&nbsp;&nbsp; 🟢 Patroli PLTS Badak selesai — Tidak ada insiden &nbsp;&nbsp;&nbsp; 🔴 Demo warga di sekitar PGE Lahendong · Tomohon, Sulawesi Utara &nbsp;&nbsp;&nbsp; 🟡 Kendaraan tak dikenal perimeter PGE Kamojang sejak 11.00 WIB &nbsp;&nbsp;&nbsp; 🟡 Pencurian kabel kawasan industri Dumai</div>
+  </div>
+
+  <div class="content">
+
+    <!-- ══ PAGE: FORECAST ══ -->
+    <div class="page active" id="page-forecast">
+
+      <div class="asset-bar">
+        <span class="asel-lbl">Aset</span>
+        <select class="asel-select" id="assetSelect" onchange="onAssetChange()">
+          <option value="all">— Semua Aset (Overview Nasional, 22 Aset) —</option>
+          <optgroup label="PT Pertamina Geothermal Energy (PGE)">
+            <option value="pge_kamojang">PGE Kamojang — Bandung, Jawa Barat</option>
+            <option value="pge_karaha">PGE Karaha — Majalengka, Jawa Barat</option>
+            <option value="pge_ulubelu">PGE Ulubelu — Tanggamus, Lampung</option>
+            <option value="pge_lahendong">PGE Lahendong — Tomohon, Sulawesi Utara</option>
+            <option value="pge_lumut">PGE Lumut Balai — Muara Enim, Sumatera Selatan</option>
+          </optgroup>
+          <optgroup label="PT Pertamina Power Indonesia (PPI)">
+            <option value="pag_aceh">PAG — Lhokseumawe, Aceh</option>
+            <option value="ppi_wte_yogya">WtE Yogyakarta — Bantul, DIY</option>
+            <option value="ppi_wte_bogor">WtE Bogor — Bogor, Jawa Barat</option>
+            <option value="ppi_bioethanol_aren">Bioethanol Aren — Garut, Jawa Barat</option>
+            <option value="ppi_plts_balongan">PLTS RU IV Balongan — Indramayu, Jawa Barat</option>
+            <option value="ppi_plts_cilacap">PLTS Cilacap — Cilacap, Jawa Tengah</option>
+            <option value="ppi_bioethanol_glen">Bioethanol Glenmore — Banyuwangi, Jawa Timur</option>
+            <option value="ppi_plts_badak">PLTS Badak 1 & 3 MW — Samarinda, Kaltim</option>
+            <option value="ppi_plts_balikpapan">PLTS RU V Balik Papan — Balikpapan, Kaltim</option>
+            <option value="ppi_plts_tjuban">PLTS Tanjung Uban — Bintan, Kepri</option>
+            <option value="ppi_geg_dumai">GEG RU II Dumai — Dumai, Riau</option>
+            <option value="ppi_plts_dumai">PLTS Dumai — Dumai, Riau</option>
+            <option value="ppi_plts_rokan">PLTS WK Rokan — Bengkalis, Riau</option>
+            <option value="ppi_plts_plaju">PLTS RU III Plaju — Palembang, Sumatera Selatan</option>
+            <option value="ppi_pltbg_mangkei">PLTBg Sei Mangkei — Simalungun, Sumatera Utara</option>
+            <option value="ppi_plts_mangkei">PLTS Sei Mangkei — Simalungun, Sumatera Utara</option>
+          </optgroup>
+        </select>
+        <div id="assetTagArea" style="display:flex;align-items:center;gap:6px"></div>
+      </div>
+
+      <div class="stats-row">
+        <div class="stat-card"><div class="stat-lbl">Total Aset</div><div class="stat-val">22</div><div class="stat-sub">6 PGE · 16 PPI</div></div>
+        <div class="stat-card"><div class="stat-lbl">Risk Level</div><div class="stat-val" style="color:var(--amber)">MEDIUM</div><div class="stat-sub" style="color:var(--red)">3 aset elevated</div></div>
+        <div class="stat-card"><div class="stat-lbl">OSINT Alerts</div><div class="stat-val" style="color:var(--blue)" id="osintCount">—</div><div class="stat-sub" id="osintUpdated">Memuat...</div></div>
+        <div class="stat-card"><div class="stat-lbl">HUMINT Reports</div><div class="stat-val" style="color:var(--green)">5</div><div class="stat-sub">3 unresolved</div></div>
+      </div>
+
+      <div class="two-col" style="grid-template-columns:1.15fr 1fr">
+
+        <!-- MAP -->
+        <div class="card">
+          <div class="card-hdr">
+            <div class="card-title">🗺 Peta Sebaran Aset & Peristiwa Keamanan</div>
+            <div class="card-act">Detail →</div>
+          </div>
+          <div id="map"></div>
+          <div class="map-legend">
+            <div class="leg-item"><div class="leg-dot" style="background:#2563eb"></div>Aset PGE / PAG / PPI</div>
+            <div class="leg-item"><div class="leg-dot" style="background:#ef4444;animation:risk-blink 1.2s ease-in-out infinite"></div>Risiko Keamanan Aktif</div>
+            <div class="leg-item"><div class="leg-dot" style="background:#f59e0b;border:2px solid #92400e"></div>Peristiwa Keamanan</div>
+          </div>
+        </div>
+
+        <!-- RIGHT COL -->
+        <div style="display:flex;flex-direction:column;gap:12px">
+
+          <!-- OSINT AI -->
+          <div class="card">
+            <div class="card-hdr">
+              <div class="card-title">🔍 OSINT Intelligence</div>
+              <span style="font-size:9px;background:linear-gradient(135deg,#312e81,#4f46e5);color:#c7d2fe;padding:2px 7px;border-radius:3px;font-weight:600">AI · Web Search</span>
+            </div>
+            <div class="osint-type-tabs">
+              <div class="ott active" id="otab-area" onclick="switchOsintTab('area')"><span class="ott-badge ottb-area">AREA</span> Ancaman Sekitar</div>
+              <div class="ott" id="otab-direct" onclick="switchOsintTab('direct')"><span class="ott-badge ottb-direct">DIRECT</span> Protes ke PGE/PPI/PAG</div>
+            </div>
+            <div class="search-row">
+              <input class="search-input" id="osintQuery" type="text" placeholder="Pilih aset atau ketik lokasi..."/>
+              <button class="btn-search" id="osintBtn" onclick="runOsint()"><span id="bIcon">⚡</span> <span id="bText">Analisis</span></button>
+            </div>
+            <div class="sugg-row">
+              <span class="sug-lbl">Cepat:</span>
+              <button class="sug-btn" onclick="qs('PGE Kamojang Bandung keamanan')">Kamojang</button>
+              <button class="sug-btn" onclick="qs('PGE Lahendong Tomohon demo protes warga')">Lahendong</button>
+              <button class="sug-btn" onclick="qs('PLTS Dumai Riau keamanan pencurian')">Dumai</button>
+              <button class="sug-btn" onclick="qs('PAG Pertamina Aceh Geothermal Lhokseumawe keamanan')">PAG Aceh</button>
+            </div>
+            <div class="osint-body" id="osintResults">
+              <div class="thinking">🤖 Menganalisis berita keamanan terkini...<span class="think-dots"><span>.</span><span>.</span><span>.</span></span></div>
+            </div>
+          </div>
+
+          <!-- Charts -->
+          <div class="two-col" style="gap:10px">
+            <div class="card">
+              <div class="card-hdr" style="padding:9px 12px"><div class="card-title" style="font-size:11px">Intensitas Kerawanan</div></div>
+              <div class="chart-wrap"><canvas id="chartIntensitas"></canvas></div>
+            </div>
+            <div class="card">
+              <div class="card-hdr" style="padding:9px 12px"><div class="card-title" style="font-size:11px">Tren Kerawanan</div></div>
+              <div class="chart-wrap"><canvas id="chartTren"></canvas></div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- HUMINT -->
+      <div class="two-col">
+        <div class="card">
+          <div class="card-hdr"><div class="card-title">📋 Input Laporan HUMINT</div><span style="font-size:10px;background:#ecfdf5;color:#059669;border:1px solid #a7f3d0;padding:2px 7px;border-radius:3px;font-weight:600">FIELD REPORT</span></div>
+          <div class="card-body">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:9px">
+              <div><div class="form-lbl">Aset</div><select class="fselect"><option>PGE Kamojang</option><option>PGE Karaha</option><option>PGE Ulubelu</option><option>PGE Lahendong</option><option>PGE Lumut Balai</option><option>PAG Aceh</option><option>WtE Yogyakarta</option><option>PLTS Badak</option><option>PLTS Dumai</option><option>GEG Dumai</option><option>Lainnya</option></select></div>
+              <div><div class="form-lbl">Risiko</div><select class="fselect"><option>LOW</option><option>MEDIUM</option><option>HIGH</option><option>CRITICAL</option></select></div>
+            </div>
+            <div class="form-row"><div class="form-lbl">Kategori</div><select class="fselect"><option>Ancaman Area (demo umum, kriminalitas sekitar)</option><option>Ancaman Langsung (protes/demo ke aset)</option><option>Gangguan Operasional</option><option>Lainnya</option></select></div>
+            <div class="form-row"><div class="form-lbl">Deskripsi</div><textarea class="ftextarea" placeholder="Deskripsikan kejadian yang diamati..."></textarea></div>
+            <button class="btn btn-primary" style="width:100%">Submit Laporan</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-hdr"><div class="card-title">📨 HUMINT Terbaru</div><span class="card-act">Lihat semua</span></div>
+          <div class="news-list">
+            <div class="news-item"><div class="ni-hdr"><div class="ni-title">Warga berkumpul di jalan masuk PGE Lahendong</div><span class="nb nb-c">DIRECT</span></div><div class="ni-meta"><span>📍 Tomohon, Sulut</span><span class="ni-src">HUMINT</span><span>14:05 WIB</span></div></div>
+            <div class="news-item"><div class="ni-hdr"><div class="ni-title">Kendaraan tidak dikenal parkir lama perimeter PGE Kamojang</div><span class="nb nb-h">HIGH</span></div><div class="ni-meta"><span>📍 Bandung, Jabar</span><span class="ni-src">HUMINT</span><span>13:47 WIB</span></div></div>
+            <div class="news-item"><div class="ni-hdr"><div class="ni-title">Pencurian kabel kawasan industri Dumai</div><span class="nb nb-m">MED</span></div><div class="ni-meta"><span>📍 Dumai, Riau</span><span class="ni-src">OSINT</span><span>11:30 WIB</span></div></div>
+            <div class="news-item"><div class="ni-hdr"><div class="ni-title">Lampu perimeter barat padam 3 titik</div><span class="nb nb-l">LOW</span></div><div class="ni-meta"><span>📍 Perimeter Barat</span><span class="ni-src">HUMINT</span><span>08:55 WIB</span></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ PAGE: CCTV ══ -->
+    <div class="page" id="page-cctv">
+      <div class="stats-row">
+        <div class="stat-card"><div class="stat-lbl">Total Kamera</div><div class="stat-val">24</div></div>
+        <div class="stat-card"><div class="stat-lbl">Online</div><div class="stat-val" style="color:var(--green)">23</div></div>
+        <div class="stat-card" style="border-color:#fde68a;cursor:pointer" onclick="document.getElementById('popOffline').classList.add('show')"><div class="stat-lbl">Offline</div><div class="stat-val" style="color:var(--amber)">1</div><div class="stat-sub" style="color:var(--amber)">▶ Klik detail</div></div>
+        <div class="stat-card" style="border-color:#fecaca;cursor:pointer" onclick="document.getElementById('popMotion').classList.add('show')"><div class="stat-lbl">Motion Alert</div><div class="stat-val" style="color:var(--red)">1</div><div class="stat-sub" style="color:var(--red)">▶ Klik detail</div></div>
+      </div>
+      <div class="card">
+        <div class="card-hdr"><div class="card-title">📹 Live Feed Monitor</div><div style="display:flex;gap:8px;align-items:center"><select class="fselect" style="width:auto;padding:3px 8px;font-size:10px"><option>PGE Kamojang</option><option>PGE Lahendong</option><option>PLTS Badak</option></select></div></div>
+        <div class="card-body">
+          <div class="cctv-grid">
+            <div class="cctv-feed"><div class="scanline"></div><svg style="position:absolute;inset:0;width:100%;height:100%" viewBox="0 0 320 200" preserveAspectRatio="xMidYMid slice"><rect width="320" height="200" fill="#050d08"/><rect x="0" y="130" width="320" height="70" fill="#030a05"/><rect x="0" y="50" width="50" height="150" fill="#071008"/><rect x="270" y="50" width="50" height="150" fill="#071008"/><rect x="50" y="50" width="220" height="12" fill="#091508"/><rect x="130" y="155" width="36" height="18" rx="2" fill="#0c1a0c"/><rect x="240" y="105" width="12" height="30" rx="1" fill="#0d1f10"/><circle cx="246" cy="100" r="6" fill="#0c1a0e"/><ellipse cx="25" cy="70" rx="18" ry="28" fill="#071208"/><ellipse cx="295" cy="65" rx="20" ry="32" fill="#071208"/></svg><div class="cctv-ts" id="ts1"></div><div class="cctv-rec"><span style="width:5px;height:5px;background:#ef4444;border-radius:50%;animation:pulse 1s infinite"></span>REC</div><div class="cctv-lbl">CAM-01 · Gerbang Utama</div></div>
+            <div class="cctv-feed"><div class="scanline"></div><svg style="position:absolute;inset:0;width:100%;height:100%" viewBox="0 0 320 200" preserveAspectRatio="xMidYMid slice"><rect width="320" height="200" fill="#060810"/><rect x="0" y="110" width="320" height="90" fill="#040610"/><rect x="10" y="40" width="85" height="90" rx="1" fill="#0a0d1a"/><rect x="10" y="60" width="85" height="2" fill="#0d1020"/><rect x="115" y="40" width="85" height="90" rx="1" fill="#0a0d1a"/><rect x="220" y="40" width="85" height="90" rx="1" fill="#0a0d1a"/><rect x="175" y="105" width="13" height="28" rx="1" fill="#10182a"/><circle cx="181" cy="100" r="6" fill="#0e1525"/></svg><div class="cctv-ts" id="ts2"></div><div class="cctv-rec"><span style="width:5px;height:5px;background:#ef4444;border-radius:50%;animation:pulse 1s infinite"></span>REC</div><div class="cctv-lbl">CAM-02 · Area Produksi</div></div>
+            <div class="cctv-feed alert-feed" onclick="document.getElementById('popMotion').classList.add('show')"><div class="scanline"></div><svg style="position:absolute;inset:0;width:100%;height:100%" viewBox="0 0 320 200" preserveAspectRatio="xMidYMid slice"><rect width="320" height="200" fill="#100808"/><rect x="0" y="60" width="320" height="8" fill="#1a0c0c"/><rect x="0" y="100" width="320" height="8" fill="#1a0c0c"/><rect x="148" y="112" width="14" height="30" rx="1" fill="#1e0f0f"/><circle cx="155" cy="107" r="7" fill="#2a1515"/><rect x="134" y="95" width="46" height="55" fill="none" stroke="rgba(239,68,68,.85)" stroke-width="1.5" stroke-dasharray="4 2"/><text x="157" y="91" font-family="monospace" font-size="8" fill="#ef4444" text-anchor="middle" font-weight="700">NO PPE ⚠</text></svg><div class="cctv-ts" id="ts4"></div><div class="cctv-rec" style="font-weight:700;animation:blink .6s infinite">⚠ ALERT</div><div class="cctv-lbl">CAM-04 · Gudang Material</div></div>
+            <div class="cctv-feed"><div class="scanline"></div><svg style="position:absolute;inset:0;width:100%;height:100%" viewBox="0 0 320 200" preserveAspectRatio="xMidYMid slice"><rect width="320" height="200" fill="#060b07"/><line x1="0" y1="100" x2="320" y2="100" stroke="#0e1a0f" stroke-width="2"/><line x1="40" y1="70" x2="40" y2="120" stroke="#0c180d" stroke-width="2"/><line x1="80" y1="70" x2="80" y2="120" stroke="#0c180d" stroke-width="2"/><line x1="160" y1="70" x2="160" y2="120" stroke="#0c180d" stroke-width="2"/><line x1="240" y1="70" x2="240" y2="120" stroke="#0c180d" stroke-width="2"/><ellipse cx="25" cy="72" rx="20" ry="32" fill="#071208"/><ellipse cx="295" cy="68" rx="22" ry="36" fill="#071208"/></svg><div class="cctv-ts" id="ts5"></div><div class="cctv-rec"><span style="width:5px;height:5px;background:#ef4444;border-radius:50%;animation:pulse 1s infinite"></span>REC</div><div class="cctv-lbl">CAM-05 · Perimeter</div></div>
+            <div class="cctv-feed"><div class="scanline"></div><svg style="position:absolute;inset:0;width:100%;height:100%" viewBox="0 0 320 200" preserveAspectRatio="xMidYMid slice"><rect width="320" height="200" fill="#07090e"/><rect x="0" y="120" width="320" height="80" fill="#050710"/><rect x="40" y="110" width="240" height="12" rx="1" fill="#0c0f18"/><rect x="55" y="65" width="65" height="45" rx="2" fill="#060815"/><rect x="135" y="60" width="75" height="50" rx="2" fill="#060815"/><rect x="168" y="88" width="12" height="24" rx="1" fill="#0c1020"/><circle cx="174" cy="83" r="6" fill="#0b0f1d"/></svg><div class="cctv-ts" id="ts6"></div><div class="cctv-rec"><span style="width:5px;height:5px;background:#ef4444;border-radius:50%;animation:pulse 1s infinite"></span>REC</div><div class="cctv-lbl">CAM-06 · Control Room</div></div>
+            <div class="cctv-feed offline" onclick="document.getElementById('popOffline').classList.add('show')"><div class="offline-overlay"><div class="offline-text">SIGNAL LOST</div><div style="font-family:monospace;font-size:8px;color:#9ca3af">28:14 · Klik detail</div></div><div class="cctv-lbl">CAM-07 · Pintu Utara</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ PAGE: PERSONEL ══ -->
+    <div class="page" id="page-personnel">
+      <div class="stats-row">
+        <div class="stat-card"><div class="stat-lbl">POB Hari Ini</div><div class="stat-val">18<span style="font-size:12px;color:var(--text2)">/20</span></div><div class="stat-sub" style="color:var(--red)">2 absen</div></div>
+        <div class="stat-card"><div class="stat-lbl">Patroli Selesai</div><div class="stat-val" style="color:var(--green)">5<span style="font-size:12px;color:var(--text2)">/6</span></div><div class="stat-sub">1 in progress</div></div>
+        <div class="stat-card"><div class="stat-lbl">Reliability Bulan Ini</div><div class="stat-val" style="color:var(--blue)">91%</div></div>
+        <div class="stat-card"><div class="stat-lbl">Shift Aktif</div><div class="stat-val">Siang</div><div class="stat-sub" style="color:var(--blue)">07:00—15:00</div></div>
+      </div>
+      <div class="two-col">
+        <div class="card"><div class="card-hdr"><div class="card-title">Person on Board</div><select class="fselect" style="width:auto;padding:3px 7px;font-size:10px"><option>Shift Siang</option><option>Shift Malam</option></select></div><div class="card-body">
+          <div class="prow"><div class="pavatar">AW</div><div style="flex:1"><div class="pname">Ahmad Wahyudi</div><div class="prole">Komandan Regu</div></div><div style="font-size:10px;font-weight:500;color:var(--green);display:flex;align-items:center;gap:3px"><div class="dot dot-g"></div>ON DUTY</div></div>
+          <div class="prow"><div class="pavatar">BS</div><div style="flex:1"><div class="pname">Bambang Santoso</div><div class="prole">Security Officer</div></div><div style="font-size:10px;font-weight:500;color:var(--green);display:flex;align-items:center;gap:3px"><div class="dot dot-g"></div>PATROLI</div></div>
+          <div class="prow"><div class="pavatar">RH</div><div style="flex:1"><div class="pname">Rudi Hartono</div><div class="prole">Security Officer</div></div><div style="font-size:10px;font-weight:500;color:var(--amber);display:flex;align-items:center;gap:3px"><div class="dot dot-a"></div>ISTIRAHAT</div></div>
+          <div class="prow"><div class="pavatar">SF</div><div style="flex:1"><div class="pname">Siti Fatimah</div><div class="prole">Gate Control</div></div><div style="font-size:10px;font-weight:500;color:var(--green);display:flex;align-items:center;gap:3px"><div class="dot dot-g"></div>ON DUTY</div></div>
+          <div class="prow"><div class="pavatar">MN</div><div style="flex:1"><div class="pname">Muhammad Nasir</div><div class="prole">Security Officer</div></div><div style="font-size:10px;font-weight:500;color:var(--green);display:flex;align-items:center;gap:3px"><div class="dot dot-g"></div>ON DUTY</div></div>
+          <div class="prow"><div class="pavatar">DK</div><div style="flex:1"><div class="pname">Deni Kurniawan</div><div class="prole">Security Officer</div></div><div style="font-size:10px;font-weight:500;color:var(--red);display:flex;align-items:center;gap:3px"><div class="dot dot-r"></div>ABSEN</div></div>
+          <div class="prow"><div class="pavatar">YP</div><div style="flex:1"><div class="pname">Yusuf Pratama</div><div class="prole">Security Officer</div></div><div style="font-size:10px;font-weight:500;color:var(--red);display:flex;align-items:center;gap:3px"><div class="dot dot-r"></div>ABSEN</div></div>
+        </div></div>
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div class="card"><div class="card-hdr"><div class="card-title">Patrol Log Hari Ini</div><span class="card-act">+ Log Manual</span></div><div class="card-body">
+            <div class="patrol-item"><div class="patrol-time">05:30</div><div class="patrol-name">Subuh — Perimeter & Gerbang</div><span class="nb nb-l" style="font-size:9px">✓ SELESAI</span></div>
+            <div class="patrol-item"><div class="patrol-time">08:00</div><div class="patrol-name">Pagi — Area Produksi & Gudang</div><span class="nb nb-l" style="font-size:9px">✓ SELESAI</span></div>
+            <div class="patrol-item"><div class="patrol-time">10:30</div><div class="patrol-name">Tengah Pagi — Semua Sektor</div><span class="nb nb-l" style="font-size:9px">✓ SELESAI</span></div>
+            <div class="patrol-item"><div class="patrol-time">13:00</div><div class="patrol-name">Siang — Perimeter & Fasilitas</div><span class="nb nb-l" style="font-size:9px">✓ SELESAI</span></div>
+            <div class="patrol-item"><div class="patrol-time">14:00</div><div class="patrol-name">Sore — Area Produksi</div><div style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--blue);font-weight:600"><div class="dot dot-g"></div>LIVE</div></div>
+            <div class="patrol-item" style="border-bottom:none"><div class="patrol-time" style="color:var(--text3)">16:00</div><div class="patrol-name" style="color:var(--text3)">Akhir Shift — Semua Sektor</div><span style="font-size:10px;color:var(--text3)">PENDING</span></div>
+          </div></div>
+          <div class="card"><div class="card-hdr" style="padding:9px 12px"><div class="card-title" style="font-size:11px">Reliability 7 Hari</div></div><div class="chart-wrap" style="padding:9px"><canvas id="chartReliability"></canvas></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ PAGE: FACILITIES ══ -->
+    <div class="page" id="page-facilities">
+      <div class="stats-row">
+        <div class="stat-card"><div class="stat-lbl">Total Aset</div><div class="stat-val">47</div></div>
+        <div class="stat-card"><div class="stat-lbl">Kondisi Baik</div><div class="stat-val" style="color:var(--green)">38</div></div>
+        <div class="stat-card" style="border-color:#fde68a"><div class="stat-lbl">Perlu Perawatan</div><div class="stat-val" style="color:var(--amber)">7</div></div>
+        <div class="stat-card" style="border-color:#fecaca"><div class="stat-lbl">Rusak / Non-aktif</div><div class="stat-val" style="color:var(--red)">2</div></div>
+      </div>
+      <div class="two-col">
+        <div class="card"><div class="card-hdr"><div class="card-title">Inventori Sarana Keamanan</div><span class="card-act">+ Tambah</span></div><div class="card-body">
+          <div class="fac-item"><div class="fac-icon">📹</div><div class="fac-info"><div class="fac-name">CCTV Camera</div><div class="fac-detail">IP Cam · Indoor & Outdoor</div><div class="cond-bar"><div class="cond-fill" style="width:96%;background:var(--green)"></div></div></div><div><div class="fac-count" style="color:var(--green)">23<span style="font-size:10px;color:var(--text2)">/24</span></div><div class="fac-note" style="color:var(--text3)">aktif</div></div></div>
+          <div class="fac-item"><div class="fac-icon">📻</div><div class="fac-info"><div class="fac-name">HT / Radio</div><div class="fac-detail">Motorola DP4801 · VHF</div><div class="cond-bar"><div class="cond-fill" style="width:80%;background:var(--green)"></div></div></div><div><div class="fac-count" style="color:var(--green)">16<span style="font-size:10px;color:var(--text2)">/20</span></div><div class="fac-note" style="color:var(--text3)">aktif</div></div></div>
+          <div class="fac-item"><div class="fac-icon">🚧</div><div class="fac-info"><div class="fac-name">Barrier Gate</div><div class="fac-detail">Otomatis · Main + Side gate</div><div class="cond-bar"><div class="cond-fill" style="width:67%;background:var(--amber)"></div></div></div><div><div class="fac-count" style="color:var(--amber)">4<span style="font-size:10px;color:var(--text2)">/6</span></div><div class="fac-note" style="color:var(--amber)">2 perlu servis</div></div></div>
+          <div class="fac-item"><div class="fac-icon">🔦</div><div class="fac-info"><div class="fac-name">Lampu Perimeter</div><div class="fac-detail">Flood light · Area luar</div><div class="cond-bar"><div class="cond-fill" style="width:90%;background:var(--green)"></div></div></div><div><div class="fac-count" style="color:var(--green)">36<span style="font-size:10px;color:var(--text2)">/40</span></div><div class="fac-note" style="color:var(--text3)">aktif</div></div></div>
+          <div class="fac-item"><div class="fac-icon">🔐</div><div class="fac-info"><div class="fac-name">Access Control</div><div class="fac-detail">Card reader · Fingerprint</div><div class="cond-bar"><div class="cond-fill" style="width:40%;background:var(--red)"></div></div></div><div><div class="fac-count" style="color:var(--red)">2<span style="font-size:10px;color:var(--text2)">/5</span></div><div class="fac-note" style="color:var(--red)">3 offline</div></div></div>
+          <div class="fac-item" style="border-bottom:none"><div class="fac-icon">🚗</div><div class="fac-info"><div class="fac-name">Kendaraan Patroli</div><div class="fac-detail">Motor + Mobil operasional</div><div class="cond-bar"><div class="cond-fill" style="width:75%;background:var(--green)"></div></div></div><div><div class="fac-count" style="color:var(--green)">3<span style="font-size:10px;color:var(--text2)">/4</span></div><div class="fac-note" style="color:var(--amber)">1 dalam servis</div></div></div>
+        </div></div>
+        <div class="card"><div class="card-hdr"><div class="card-title">Update Kondisi Aset</div></div><div class="card-body">
+          <div class="form-row"><div class="form-lbl">Aset</div><select class="fselect"><option>CCTV — CAM-07</option><option>HT Radio — Unit 03</option><option>Barrier Gate — Side Gate B</option><option>Access Control — Gudang Material</option></select></div>
+          <div class="form-row"><div class="form-lbl">Kondisi</div><select class="fselect"><option>Baik</option><option>Perlu Perawatan</option><option selected>Rusak / Offline</option></select></div>
+          <div class="form-row"><div class="form-lbl">Keterangan</div><textarea class="ftextarea">Tidak ada sinyal sejak 13:55 WIB. Teknisi dijadwalkan besok pagi.</textarea></div>
+          <div class="form-row"><div class="form-lbl">Estimasi Perbaikan</div><input type="date" class="finput" value="2026-05-08"></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px"><button class="btn btn-primary">Update Status</button><button class="btn btn-secondary">Buat Work Order</button></div>
+        </div></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ─── ASSET DATA ───
+const ASSETS = {
+  pag_aceh:   {name:'PAG Aceh',      lokasi:'Lhokseumawe, Aceh',               co:'PPI', risk:'MEDIUM', lat:5.2207,  lng:97.0805},
+  pge_kamojang:{name:'PGE Kamojang', lokasi:'Bandung, Jawa Barat',             co:'PGE', risk:'HIGH',   lat:-7.1525, lng:107.7906},
+  pge_karaha:  {name:'PGE Karaha',   lokasi:'Majalengka, Jawa Barat',          co:'PGE', risk:'MEDIUM', lat:-7.1203, lng:108.0810},
+  pge_ulubelu: {name:'PGE Ulubelu',  lokasi:'Tanggamus, Lampung',              co:'PGE', risk:'LOW',    lat:-5.3059, lng:104.5770},
+  pge_lahendong:{name:'PGE Lahendong',lokasi:'Tomohon, Sulawesi Utara',        co:'PGE', risk:'CRITICAL',lat:1.3052, lng:124.8317},
+  pge_lumut:   {name:'PGE Lumut Balai',lokasi:'Muara Enim, Sumatera Selatan',  co:'PGE', risk:'LOW',    lat:-4.1939, lng:103.6405},
+  ppi_wte_yogya:{name:'WtE Yogyakarta',lokasi:'Bantul, DIY',                   co:'PPI', risk:'LOW',    lat:-7.8380, lng:110.4792},
+  ppi_wte_bogor:{name:'WtE Bogor',   lokasi:'Bogor, Jawa Barat',               co:'PPI', risk:'LOW',    lat:-6.5651, lng:106.6440},
+  ppi_bioethanol_aren:{name:'Bioethanol Aren',lokasi:'Garut, Jawa Barat',      co:'PPI', risk:'LOW',    lat:-7.4249, lng:107.8811},
+  ppi_plts_balongan:{name:'PLTS Balongan',lokasi:'Indramayu, Jawa Barat',      co:'PPI', risk:'LOW',    lat:-6.3818, lng:108.3903},
+  ppi_plts_cilacap:{name:'PLTS Cilacap',lokasi:'Cilacap, Jawa Tengah',         co:'PPI', risk:'LOW',    lat:-7.7068, lng:109.0064},
+  ppi_bioethanol_glen:{name:'Bioethanol Glenmore',lokasi:'Banyuwangi, Jawa Timur',co:'PPI',risk:'LOW',  lat:-8.2819, lng:114.0507},
+  ppi_plts_badak:{name:'PLTS Badak 1&3MW',lokasi:'Samarinda, Kalimantan Timur',co:'PPI', risk:'LOW',    lat:-0.4275, lng:117.1919},
+  ppi_plts_balikpapan:{name:'PLTS Balik Papan',lokasi:'Balikpapan, Kalimantan Timur',co:'PPI',risk:'MEDIUM',lat:-1.2528,lng:116.8221},
+  ppi_plts_tjuban:{name:'PLTS Tanjung Uban',lokasi:'Bintan, Kepulauan Riau',   co:'PPI', risk:'LOW',    lat:1.0730,  lng:104.2155},
+  ppi_geg_dumai:{name:'GEG RU II Dumai',lokasi:'Dumai, Riau',                  co:'PPI', risk:'HIGH',   lat:1.6803,  lng:101.4646},
+  ppi_plts_dumai:{name:'PLTS Dumai', lokasi:'Dumai, Riau',                     co:'PPI', risk:'HIGH',   lat:1.6820,  lng:101.4660},
+  ppi_plts_rokan:{name:'PLTS WK Rokan',lokasi:'Bengkalis, Riau',               co:'PPI', risk:'MEDIUM', lat:1.2579,  lng:101.2061},
+  ppi_plts_plaju:{name:'PLTS Plaju', lokasi:'Palembang, Sumatera Selatan',     co:'PPI', risk:'LOW',    lat:-2.9926, lng:104.8263},
+  ppi_pltbg_mangkei:{name:'PLTBg Sei Mangkei',lokasi:'Simalungun, Sumatera Utara',co:'PPI',risk:'LOW',  lat:3.1638,  lng:99.3461},
+  ppi_plts_mangkei:{name:'PLTS Sei Mangkei',lokasi:'Simalungun, Sumatera Utara',co:'PPI',risk:'LOW',    lat:3.1321,  lng:99.3407}
+};
+
+// ─── MAP ───
+const map = L.map('map',{center:[-2.5,118],zoom:5,zoomControl:true,scrollWheelZoom:true});
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap',maxZoom:18}).addTo(map);
+
+const markers = {};
+Object.entries(ASSETS).forEach(([key,a])=>{
+  const isRisk = ['CRITICAL','HIGH'].includes(a.risk);
+  const blinkHtml = isRisk
+    ? `<div class="risk-marker-blink" style="width:16px;height:16px;border-radius:50%;background:#ef4444;border:2.5px solid white;box-shadow:0 0 8px rgba(239,68,68,.7)"></div>`
+    : `<div style="width:13px;height:13px;border-radius:50%;background:#2563eb;border:2px solid white;box-shadow:0 2px 5px rgba(0,0,0,.25)"></div>`;
+  const icon = L.divIcon({className:'',html:blinkHtml,iconSize:[isRisk?16:13,isRisk?16:13],iconAnchor:[isRisk?8:6.5,isRisk?8:6.5]});
+  const coTag = {PGE:'#fef2f2|#dc2626|#fecaca',PPI:'#eff6ff|#2563eb|#bfdbfe'}[a.co]||'#eff6ff|#2563eb|#bfdbfe';
+  const [coBg,coTxt,coBdr] = coTag.split('|');
+  const riskC = {CRITICAL:'#fef2f2|#dc2626',HIGH:'#fffbeb|#b45309',MEDIUM:'#eff6ff|#1d4ed8',LOW:'#ecfdf5|#059669'}[a.risk]||'#f3f4f6|#6b7280';
+  const [rBg,rTxt] = riskC.split('|');
+  const m = L.marker([a.lat,a.lng],{icon}).addTo(map).bindPopup(`
+    <div style="font-family:Inter,sans-serif;min-width:190px">
+      <div style="font-weight:700;font-size:13px;margin-bottom:4px">${a.name}</div>
+      <div style="font-size:11px;color:#6b7280;margin-bottom:7px">📍 ${a.lokasi}</div>
+      <div style="display:flex;gap:6px">
+        <span style="font-size:10px;background:${coBg};color:${coTxt};border:1px solid ${coBdr};padding:2px 8px;border-radius:10px;font-weight:700">${a.co}</span>
+        <span style="font-size:10px;background:${rBg};color:${rTxt};padding:2px 8px;border-radius:3px;font-weight:700">${a.risk}</span>
+      </div>
+    </div>`);
+  markers[key]=m;
+});
+
+// Incident markers
+const incidentIcon = L.divIcon({className:'',html:`<div style="width:11px;height:11px;border-radius:50%;background:#f59e0b;border:2px solid #92400e;box-shadow:0 2px 5px rgba(0,0,0,.3)"></div>`,iconSize:[11,11],iconAnchor:[5.5,5.5]});
+[
+  {lat:1.29,lng:124.81,title:'Demo Warga',desc:'Warga berkumpul di jalan masuk PGE Lahendong'},
+  {lat:1.69,lng:101.47,title:'Pencurian Kabel',desc:'Laporan pencurian kabel area industri Dumai'},
+  {lat:-7.14,lng:107.80,title:'Kendaraan Mencurigakan',desc:'Kendaraan tak dikenal perimeter PGE Kamojang'},
+].forEach(inc=>{
+  L.marker([inc.lat,inc.lng],{icon:incidentIcon}).addTo(map)
+    .bindPopup(`<div style="font-family:Inter,sans-serif"><b style="color:#b45309">⚠ ${inc.title}</b><br><span style="font-size:11px;color:#6b7280">${inc.desc}</span></div>`);
+});
+
+function focusAsset(key){
+  if(key==='all'){map.setView([-2.5,118],5);return;}
+  const a=ASSETS[key]; if(!a)return;
+  map.setView([a.lat,a.lng],12); markers[key]?.openPopup();
+}
+
+// ─── DATE PICKER ───
+let datePickerOpen=false;
+function toggleDatePicker(){
+  datePickerOpen=!datePickerOpen;
+  document.getElementById('datePickerPopup').classList.toggle('open',datePickerOpen);
+}
+document.addEventListener('click',e=>{
+  const wrap=document.getElementById('dateRangeWrap');
+  if(!wrap.contains(e.target)){datePickerOpen=false;document.getElementById('datePickerPopup').classList.remove('open');}
+});
+function setPreset(days,label,el){
+  document.querySelectorAll('.dp-preset').forEach(p=>p.classList.remove('active'));
+  el.classList.add('active');
+  const to=new Date(); const from=new Date(to.getTime()-((days-1)*86400000));
+  document.getElementById('dpFrom').value=from.toISOString().slice(0,10);
+  document.getElementById('dpTo').value=to.toISOString().slice(0,10);
+}
+function applyDateRange(){
+  const f=document.getElementById('dpFrom').value;
+  const t=document.getElementById('dpTo').value;
+  if(!f||!t)return;
+  const fmt=d=>d.split('-').reverse().join('/');
+  document.getElementById('dateRangeLabel').textContent=fmt(f)+' – '+fmt(t);
+  datePickerOpen=false; document.getElementById('datePickerPopup').classList.remove('open');
+}
+
+// ─── CHARTS ───
+new Chart(document.getElementById('chartIntensitas').getContext('2d'),{
+  type:'bar',
+  data:{labels:['Dumai','Lahendong','Kamojang','Lhokseumawe','Cilacap'],
+    datasets:[{data:[5,4,3,2,2],backgroundColor:'#2563eb',borderRadius:4,barThickness:12}]},
+  options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+    scales:{x:{grid:{color:'#f3f4f6'},ticks:{font:{size:9},color:'#9ca3af'}},y:{grid:{display:false},ticks:{font:{size:10},color:'#374151'}}}}
+});
+new Chart(document.getElementById('chartTren').getContext('2d'),{
+  type:'line',
+  data:{labels:['01/05','02/05','03/05','04/05','05/05','06/05','07/05'],
+    datasets:[{data:[1,2,4,6,5,3,2],borderColor:'#2563eb',backgroundColor:'rgba(37,99,235,.08)',fill:true,tension:.4,pointRadius:3,pointBackgroundColor:'#2563eb'}]},
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+    scales:{x:{grid:{color:'#f3f4f6'},ticks:{font:{size:9},color:'#9ca3af',maxRotation:45}},y:{grid:{color:'#f3f4f6'},ticks:{font:{size:9},color:'#9ca3af',stepSize:2}}}}
+});
+new Chart(document.getElementById('chartReliability').getContext('2d'),{
+  type:'bar',
+  data:{labels:['Sen','Sel','Rab','Kam','Jum','Sab','Min'],
+    datasets:[{data:[95,100,83,67,95,100,91],backgroundColor:['#2563eb','#2563eb','#f59e0b','#f59e0b','#2563eb','#10b981','#06b6d4'],borderRadius:4}]},
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+    scales:{x:{grid:{display:false},ticks:{font:{size:9},color:'#9ca3af'}},y:{grid:{color:'#f3f4f6'},ticks:{font:{size:9},color:'#9ca3af'},min:0,max:100}}}
+});
+
+// ─── ASSET SELECTOR ───
+let currentOsintMode='area';
+function onAssetChange(){
+  const sel=document.getElementById('assetSelect').value;
+  const c=document.getElementById('assetTagArea');
+  focusAsset(sel);
+  if(sel==='all'){c.innerHTML='';document.getElementById('osintQuery').value='';return;}
+  const a=ASSETS[sel]; if(!a)return;
+  const coClass={PGE:'tag-pge',PPI:'tag-ppi'}[a.co]||'tag-ppi';
+  const rClass={CRITICAL:'tag-rc',HIGH:'tag-rh',MEDIUM:'tag-rm',LOW:'tag-rl'}[a.risk];
+  c.innerHTML=`<span class="asel-tag ${coClass}">${a.co}</span><span style="font-size:11px;color:var(--text2)">${a.lokasi}</span><span class="asel-tag ${rClass}">Risk: ${a.risk}</span>`;
+  updateOsintQuery(sel);
+}
+function updateOsintQuery(sel){
+  const a=ASSETS[sel]; if(!a)return;
+  const q=document.getElementById('osintQuery');
+  if(currentOsintMode==='area') q.value=`${a.name} ${a.lokasi} keamanan ancaman kriminalitas`;
+  else q.value=`Pertamina ${a.co==='PGE'?'Geothermal Energy PGE':'Power Indonesia PPI'} ${a.name} protes demo warga keluhan`;
+}
+function switchOsintTab(mode){
+  currentOsintMode=mode;
+  document.getElementById('otab-area').classList.toggle('active',mode==='area');
+  document.getElementById('otab-direct').classList.toggle('active',mode==='direct');
+  const sel=document.getElementById('assetSelect').value;
+  if(sel!=='all')updateOsintQuery(sel);
+  else document.getElementById('osintQuery').value=mode==='direct'?'Pertamina PGE PPI PAG protes demo warga keluhan masyarakat 2025 2026':'keamanan industri energi Indonesia PGE PPI ancaman terkini';
+}
+
+// ─── AI OSINT ───
+async function runOsint(){
+  const query=document.getElementById('osintQuery').value.trim(); if(!query)return;
+  const btn=document.getElementById('osintBtn');
+  const results=document.getElementById('osintResults');
+  btn.disabled=true;
+  document.getElementById('bIcon').textContent='⏳';
+  document.getElementById('bText').textContent='Mencari...';
+  results.innerHTML=`<div class="thinking">🤖 AI menganalisis berita keamanan...<span class="think-dots"><span>.</span><span>.</span><span>.</span></span></div>`;
+  const isDirect=currentOsintMode==='direct';
+  const sys=isDirect
+    ?`Kamu adalah analis intelijen keamanan untuk PT Pertamina Geothermal Energy (PGE), PT Pertamina Power Indonesia (PPI), dan PAG. Tugasmu mencari berita protes, demo, atau keluhan warga yang mengarah ke aset Pertamina.
+
+PENTING: Perluas pencarian ke seluruh provinsi jika tidak ada berita tepat di lokasi aset. Selalu temukan minimal 3-5 kejadian. Jika tidak ada protes langsung ke aset tersebut, cari: protes ke Pertamina secara umum, keluhan warga sekitar proyek energi di provinsi itu, konflik lahan proyek energi, tuntutan CSR/kompensasi, demonstrasi ke kantor Pertamina/ESDM di provinsi tersebut.
+
+Gunakan web search dengan beberapa query: nama aset + "warga", nama provinsi + "Pertamina" + "protes", nama provinsi + "energi" + "demo", "Pertamina" + nama kota/provinsi + "keluhan".
+
+Kembalikan HANYA JSON tanpa teks lain:
+{"summary":"Ringkasan 2-3 kalimat situasi konflik sosial area","risk_level":"CRITICAL|HIGH|MEDIUM|LOW","events":[{"title":"Judul singkat kejadian","level":"CRITICAL|HIGH|MEDIUM|LOW","location":"Lokasi + relasi ke aset","source":"Nama media","time":"Tanggal/waktu","summary":"2-3 kalimat: apa yang terjadi dan potensi dampak ke operasional/reputasi"}],"recommendation":"Rekomendasi tindakan konkret"}`
+    :`Kamu adalah analis intelijen keamanan untuk PT Pertamina Geothermal Energy (PGE), PT Pertamina Power Indonesia (PPI), dan PAG. Tugasmu mencari berita ancaman keamanan yang relevan dengan aset energi Pertamina.
+
+PENTING: Gunakan radius pencarian LUAS — cakup seluruh provinsi, bukan hanya kota/kecamatan aset. Jika tidak ada berita tepat di lokasi, ambil berita dari provinsi yang sama atau wilayah terdekat. Selalu temukan minimal 3-5 berita/kejadian.
+
+Kategori yang dicari: demonstrasi buruh/warga, pencurian (kabel, BBM, alat berat), kriminalitas kawasan industri, kerusuhan sosial, konflik lahan, gangguan keamanan, kejahatan jalanan di rute akses aset, bencana alam yang ganggu operasional.
+
+Gunakan web search dengan query yang bervariasi: coba nama kota, nama provinsi, nama kawasan industri terdekat. Jika area spesifik sepi berita, perluas ke provinsi atau pulau.
+
+Kembalikan HANYA JSON tanpa teks lain:
+{"summary":"Ringkasan 2-3 kalimat situasi keamanan area","risk_level":"CRITICAL|HIGH|MEDIUM|LOW","events":[{"title":"Judul singkat kejadian","level":"CRITICAL|HIGH|MEDIUM|LOW","location":"Lokasi lengkap + estimasi jarak ke aset","source":"Nama media","time":"Tanggal/waktu","summary":"2-3 kalimat: apa yang terjadi dan relevansinya ke keamanan aset"}],"recommendation":"Rekomendasi tindakan konkret"}`;
+  try{
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,tools:[{type:'web_search_20250305',name:'web_search'}],system:sys,messages:[{role:'user',content:`Cari dan analisis untuk: "${query}"`}]})});
+    const data=await resp.json();
+    const txt=data.content.filter(b=>b.type==='text').map(b=>b.text).join('');
+    let parsed;
+    try{const m=txt.match(/\{[\s\S]*\}/);parsed=JSON.parse(m?m[0]:txt);}
+    catch(e){results.innerHTML=`<div style="font-size:11px;color:var(--text2);line-height:1.7;padding:4px">${txt.replace(/\n/g,'<br>')}</div>`;resetBtn();return;}
+    document.getElementById('osintCount').textContent=(parsed.events||[]).length;
+    document.getElementById('osintUpdated').textContent='Update: '+new Date().toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'})+' WIB';
+    const rC={CRITICAL:'#ef4444',HIGH:'#f59e0b',MEDIUM:'#3b82f6',LOW:'#10b981'};
+    let html='';
+    if(parsed.summary){
+      const c=rC[parsed.risk_level]||'#6b7280';
+      html+=`<div class="ov-box" style="border-left-color:${c}"><div class="ov-risk-lbl" style="color:${c}">Situasi ${isDirect?'Ancaman Langsung':'Area'} · Risk: ${parsed.risk_level||'—'}</div><div class="ov-text">${parsed.summary}</div>${parsed.recommendation?`<div class="ov-rec">💡 ${parsed.recommendation}</div>`:''}</div>`;
+    }
+    (parsed.events||[]).forEach(ev=>{
+      const lc={CRITICAL:'oe-c',HIGH:'oe-h',MEDIUM:'oe-m',LOW:'oe-l'}[ev.level]||'oe-m';
+      const nb={CRITICAL:'nb-c',HIGH:'nb-h',MEDIUM:'nb-m',LOW:'nb-l'}[ev.level]||'nb-m';
+      html+=`<div class="osint-ev ${lc}"><div class="oe-r1"><div class="oe-title">${ev.title||'—'}</div><span class="nb ${nb}">${ev.level||''}</span></div><div class="oe-r2"><span class="oe-loc">📍 ${ev.location||'—'}</span>${ev.source?`<span class="oe-src">${ev.source}</span>`:''}<span class="oe-time">${ev.time||''}</span></div>${ev.summary?`<div class="oe-sum">${ev.summary}</div>`:''}</div>`;
+    });
+    if(!parsed.events?.length)html+=`<div class="empty-osint">Tidak ada kejadian signifikan ditemukan.</div>`;
+    results.innerHTML=html;
+  }catch(err){
+    results.innerHTML=`<div style="padding:14px;text-align:center;color:var(--text3);font-size:11px">⚠ Gagal: ${err.message}</div>`;
+  }
+  resetBtn();
+}
+function resetBtn(){document.getElementById('osintBtn').disabled=false;document.getElementById('bIcon').textContent='⚡';document.getElementById('bText').textContent='Analisis';}
+function qs(q){document.getElementById('osintQuery').value=q;runOsint();}
+document.getElementById('osintQuery').addEventListener('keydown',e=>{if(e.key==='Enter')runOsint();});
+
+// ─── NAV ───
+const pageTitles={forecast:'Security Forecast Dashboard',cctv:'CCTV Monitoring',personnel:'Logbook & Personnel Tracking',facilities:'Sarana & Prasarana'};
+function switchPage(id,el){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  el.classList.add('active');
+  document.getElementById('pageTitle').textContent=pageTitles[id]||id;
+  if(id==='forecast')setTimeout(()=>map.invalidateSize(),100);
+}
+
+// ─── POPUP ───
+function closePopup(id){document.getElementById(id).classList.remove('show');}
+setTimeout(()=>document.getElementById('popMotion').classList.add('show'),2500);
+
+// ─── CLOCK ───
+function updateClock(){
+  const n=new Date();
+  const t=n.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  document.getElementById('clock').textContent=t;
+  document.getElementById('clockSmall').textContent=t.slice(0,5)+' WIB';
+  ['ts1','ts2','ts4','ts5','ts6'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=t;});
+}
+updateClock(); setInterval(updateClock,1000);
+window.addEventListener('load',()=>setTimeout(()=>map.invalidateSize(),300));
+
+// ─── AUTO-LOAD OSINT on start ───
+window.addEventListener('load',()=>{
+  setTimeout(()=>{
+    document.getElementById('osintQuery').value='demonstrasi pencurian kriminalitas kawasan industri energi Jawa Barat Sumatera Kalimantan Sulawesi 2025 2026';
+    runOsint();
+  },800);
+});
+</script>
+</body>
+</html>
